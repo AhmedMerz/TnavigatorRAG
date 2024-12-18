@@ -1,10 +1,7 @@
 import streamlit as st
 import requests
 import uuid
-
-import os
-import subprocess
-
+from supabase import create_client, Client
 
 # Supabase setup
 SUPABASE_URL = "https://czhtrajjirbzyjijbntr.supabase.co"
