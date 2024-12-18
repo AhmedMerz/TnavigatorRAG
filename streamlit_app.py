@@ -5,14 +5,6 @@ import uuid
 import os
 import subprocess
 
-# Install the required library if not found
-try:
-    from supabase import create_client, Client
-except ModuleNotFoundError:
-    print("Installing missing libraries...")
-    subprocess.check_call(["pip", "install", "supabase"])
-    from supabase import create_client, Client
-from supabase import create_client, Client
 
 # Supabase setup
 SUPABASE_URL = "https://czhtrajjirbzyjijbntr.supabase.co"
