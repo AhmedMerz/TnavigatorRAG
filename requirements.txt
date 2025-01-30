@@ -1,2 +1,5 @@
 streamlit
+requests
+uuid
 supabase
+python-dotenv
