@@ -278,7 +278,6 @@ def main():
                                     with st.chat_message("assistant"):
                                         st.markdown(ai_message)
                                         
-                                        # Add a separator and heading for tutorials
                                        # Add a separator and heading for tutorials
                                         st.markdown("---")
                                         st.markdown("### Related Tutorials:")
