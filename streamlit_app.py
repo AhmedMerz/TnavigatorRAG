@@ -13,9 +13,9 @@ from datetime import datetime
 load_dotenv()
 
 # Fetch keys securely
-SUPABASE_URL="https://krsssovjrpfgwsiyevqr.supabase.co"
-SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtyc3Nzb3ZqcnBmZ3dzaXlldnFyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNzQ4NjY4NiwiZXhwIjoyMDUzMDYyNjg2fQ.SbsIoI2eYIFbtLxgK-OvjOMVd8gdvwHfjd-AU_mAk70"
-WEBHOOK_URL="https://ahmedmerzoug.app.n8n.cloud/webhook/invokeTnavRAG"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
