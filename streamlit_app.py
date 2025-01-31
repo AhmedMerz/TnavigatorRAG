@@ -208,7 +208,7 @@ def main():
                 current_index = 0
 
             selected_session = st.sidebar.selectbox(
-                "Pick a session (descending order by time)",
+                "Pick a session",
                 options=session_ids,
                 index=current_index,
                 format_func=session_format_func
