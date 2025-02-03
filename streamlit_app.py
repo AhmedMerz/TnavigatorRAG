@@ -90,11 +90,20 @@ def load_all_sessions():
                         "chat_name": chat_name,
                         "timestamp": row["timestamp"],
                     }
+            def parse_timestamp(ts):
+                if isinstance(ts, str):
+                    try:
+                        return datetime.fromisoformat(ts)
+                    except Exception as e:
+                        print(f"Failed to parse timestamp string '{ts}':", e)
+                        return datetime.min
+                return datetime.min
 
+            
             # Sort by timestamp DESC
             sorted_sessions = sorted(
                 session_info.items(),
-                key=lambda x: x[1]["timestamp"],
+                key=lambda x: parse_timestamp(x[1]["timestamp"]),
                 reverse=True
             )
 
