@@ -7,15 +7,21 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 # -------------------------------------------------------------------
-# Supabase configuration
+# Load environment variables
 # -------------------------------------------------------------------
-# Load environment variables from .env file
 load_dotenv()
 
-# Fetch keys securely
+# Instead of initializing WEBHOOK_URL as a constant at the top,
+# we define a function that builds it dynamically.
+def get_webhook_url(reasoning: bool = False) -> str:
+    base_url = os.getenv("WEBHOOK_URL")  # Always read the base URL from env
+    if reasoning:
+        return base_url + "1"  # Append "1" if the checkbox is selected
+    return base_url
+
+# Fetch Supabase keys from environment variables
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -67,7 +73,6 @@ def load_all_sessions():
     """
     try:
         user_email = st.session_state.auth.user.email
-        # Fetch session_id, chat_name, timestamp
         records = (
             supabase
             .table("user_conversations3")
@@ -78,18 +83,11 @@ def load_all_sessions():
         )
 
         if records.data:
-            # We'll collect data in a dict keyed by session_id
             session_info = {}
             for row in records.data:
                 sid = row["session_id"]
-                # Only record the first chat_name we see per sid
                 if sid not in session_info:
-                    # Let chat_name be exactly what's in the DB (can be None or empty)
-                    chat_name = row["chat_name"]
-                    session_info[sid] = {
-                        "chat_name": chat_name,
-                        "timestamp": row["timestamp"],
-                    }
+                    session_info[sid] = {"chat_name": row["chat_name"], "timestamp": row["timestamp"]}
             def parse_timestamp(ts):
                 if isinstance(ts, str):
                     try:
@@ -99,15 +97,11 @@ def load_all_sessions():
                         return datetime.min
                 return datetime.min
 
-            
-            # Sort by timestamp DESC
             sorted_sessions = sorted(
                 session_info.items(),
                 key=lambda x: parse_timestamp(x[1]["timestamp"]),
                 reverse=True
             )
-
-            # Convert to a list of (session_id, chat_name)
             st.session_state.all_sessions = [
                 (session_id, data["chat_name"]) for session_id, data in sorted_sessions
             ]
@@ -118,8 +112,8 @@ def load_all_sessions():
 
 def load_previous_messages(session_id: str):
     """
-    Fetch old conversations for a given session_id and
-    store them into st.session_state.messages in chronological order (oldest first).
+    Fetch old conversations for a given session_id and store them into st.session_state.messages
+    in chronological order (oldest first).
     """
     try:
         st.session_state.messages = []
@@ -137,7 +131,6 @@ def load_previous_messages(session_id: str):
 
         if records.data:
             for row in reversed(records.data):
-                # If there's no question/answer, it might just be a placeholder row
                 if row["question"]:
                     st.session_state.messages.append({"role": "user", "content": row["question"]})
                 if row["answer"]:
@@ -174,7 +167,6 @@ def auth_ui():
             if login_res:
                 st.session_state.auth = login_res
                 st.rerun()
-
     with tab2:
         email = st.text_input("Email", key="signup_email")
         password = st.text_input("Password", type="password", key="signup_password")
@@ -197,20 +189,22 @@ def main():
 
         st.sidebar.success(f"Logged in as {st.session_state.auth.user.email}")
 
-        # If there are existing sessions, let the user pick one
-        if st.session_state.all_sessions:
-            # Gather session_ids
-            session_ids = [s[0] for s in st.session_state.all_sessions]
+        # -------------------------------------------------------------------
+        # Reasoning Checkbox in the Sidebar:
+        # When checked, we use the get_webhook_url function to add "1" to the URL.
+        # -------------------------------------------------------------------
+        reasoning = st.sidebar.checkbox("Reasoning")
+        final_webhook_url = get_webhook_url(reasoning)
 
-            # Helper to map session_id -> chat_name
+        # Sidebar session management
+        if st.session_state.all_sessions:
+            session_ids = [s[0] for s in st.session_state.all_sessions]
             def session_format_func(sid):
                 for stored_sid, chat_name in st.session_state.all_sessions:
                     if stored_sid == sid:
-                        # If there's no chat_name, fallback to session_id or blank
                         return chat_name if chat_name else f"(No Name) - {sid[:6]}"
                 return "Unknown Session"
 
-            # Determine the current index if it exists
             if st.session_state.session_id in session_ids:
                 current_index = session_ids.index(st.session_state.session_id)
             else:
@@ -236,7 +230,6 @@ def main():
 
         if st.sidebar.button("Start New Session"):
             new_id = generate_session_id()
-            # Only set session state, no DB insertion; naming is handled by the webhook
             st.session_state.session_id = new_id
             st.session_state.messages = []
             st.rerun()
@@ -267,48 +260,32 @@ def main():
                 }
 
                 with st.spinner("AI is thinking..."):
-                    response = requests.post(WEBHOOK_URL, json=payload, headers=headers)
+                    response = requests.post(final_webhook_url, json=payload, headers=headers)
                 if response.status_code == 200:
                     try:
                         resp_json = response.json()
-                        
                         if isinstance(resp_json, list) and resp_json:
-                            first_item = resp_json[0]  # Get first item in the list
-                            
+                            first_item = resp_json[0]
                             if isinstance(first_item, dict) and "data" in first_item:
                                 data_list = first_item["data"]
-                                
                                 if isinstance(data_list, list) and data_list:
-                                    # Get the AI message
                                     ai_message = data_list[0].get("output ", "No 'output' key found.")
-                                    
-                                    # Display the AI message
                                     st.session_state.messages.append({"role": "assistant", "content": ai_message})
                                     with st.chat_message("assistant"):
                                         st.markdown(ai_message)
-                                        
-                                       # Add a separator and heading for tutorials
                                         st.markdown("---")
                                         st.markdown("### Related Tutorials:")
-                                        
-                                        # Create a container for the tutorial links
                                         tutorials_container = st.container()
-                                        
-                                        # Optionally, use columns for better layout
-                                        cols = tutorials_container.columns(2)  # Adjust the number based on preference
-                                        
+                                        cols = tutorials_container.columns(2)
                                         for idx, tutorial in enumerate(data_list[1:]):
                                             if 'titleSlide' in tutorial and 'Link' in tutorial:
-                                                col = cols[idx % 2]  # Distribute tutorials across columns
+                                                col = cols[idx % 2]
                                                 with col:
-                                                    # Using Markdown with icons for better visuals
                                                     st.markdown(f"📚 **[{tutorial['titleSlide']}]({tutorial['Link']})**")
-
-
                     except ValueError:
-                        ai_message = "Response is not valid JSON."
+                        st.error("Response is not valid JSON.")
                 else:
-                    ai_message = f"Error: {response.status_code} - {response.text}"
+                    st.error(f"Error: {response.status_code} - {response.text}")
 
 if __name__ == "__main__":
     main()
